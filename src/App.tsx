@@ -184,37 +184,44 @@ export default function App() {
         refreshData();
 
         // Listen for real-time updates
-        window.aetherAPI.onDataUpdate((data) => {
+        const dataUpdateHandler = (data) => {
             console.log('Real-time activity update:', data);
             // Refresh dashboard data when activity changes
             refreshData();
-        });
+        };
+        window.aetherAPI.onDataUpdate(dataUpdateHandler);
 
         // Fetch initial WPM stats
-        window.aetherAPI.getWpmStats().then(setWpmStats);
+        window.aetherAPI.getWpmStats().then(setWpmStats).catch(console.error);
 
         // Fetch initial autoLaunch status
-        window.aetherAPI.getAutoLaunchStatus().then(setAutoLaunchEnabled);
+        window.aetherAPI.getAutoLaunchStatus().then(setAutoLaunchEnabled).catch(console.error);
 
         // Listen for WPM updates
-        window.aetherAPI.onWpmUpdate((stats) => {
+        const wpmUpdateHandler = (stats) => {
             console.log('Synchronized WPM update:', stats);
             setWpmStats(stats);
             setDashboardData(prev => prev ? { ...prev, wpmComparison: stats } : prev);
-        });
+        };
+        window.aetherAPI.onWpmUpdate(wpmUpdateHandler);
 
         // Listen for Incognito toggle from main process (Tray)
         if (window.aetherAPI.onToggleIncognito) {
-            window.aetherAPI.onToggleIncognito(() => {
+            const incognitoHandler = () => {
                 setIsIncognito(prev => {
                     const next = !prev;
                     window.aetherAPI.updateSettings({ isIncognito: next });
                     return next;
                 });
-            });
+            };
+            window.aetherAPI.onToggleIncognito(incognitoHandler);
         }
 
-        return () => clearInterval(timer);
+        return () => {
+            clearInterval(timer);
+            // Note: IPC listeners are registered globally and cannot be easily removed
+            // This is a limitation of the current IPC API design
+        };
     }, []);
 
     const formattedTime = time.toLocaleTimeString('en-US', { hour12: false });

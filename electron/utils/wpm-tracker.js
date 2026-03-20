@@ -78,6 +78,13 @@ class WpmTracker extends EventEmitter {
         this.lastKeystrokeTime = now;
     }
 
+    resetForIncognito() {
+        this.totalKeystrokes = 0;
+        this.totalActiveDuration = 0;
+        this.lastKeystrokeTime = null;
+        this.activeTypingStartTime = null;
+    }
+
     calculateWpm() {
         // (totalKeystrokes / 5) / (activeTypingMinutes)
         const activeSeconds = this.totalActiveDuration / 1000;

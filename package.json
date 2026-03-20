@@ -1,7 +1,7 @@
 {
   "name": "aether",
   "version": "1.0.0",
-  "description": "",
+  "description": "A minimalist activity tracking dashboard for conscious digital well-being",
   "main": "electron/main.js",
   "type": "module",
   "scripts": {
@@ -48,8 +48,8 @@
     "asar": true,
     "publish": null
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["activity-tracker", "digital-wellbeing", "productivity", "electron", "dashboard"],
+  "author": "Aether Team",
   "license": "ISC",
   "devDependencies": {
     "@types/react": "^19.2.14",

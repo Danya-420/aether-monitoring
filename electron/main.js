@@ -183,13 +183,11 @@ ipcMain.handle('set-auto-launch', async (event, enabled) => {
 });
 
 ipcMain.handle('get-auto-launch-status', () => {
-    // Check both Windows setting AND stored preference
-    const loginSettings = app.getLoginItemSettings();
+    // Return stored preference which is synced when set-auto-launch is called
     const storedPreference = activityStore.getAutoLaunchEnabled();
     
-    console.log(`[Auto-Launch] Windows: ${loginSettings.openAtLogin}, Stored: ${storedPreference}`);
+    console.log(`[Auto-Launch] Stored preference: ${storedPreference}`);
     
-    // Return stored preference (more reliable)
     return storedPreference;
 });
 

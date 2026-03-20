@@ -9,7 +9,7 @@ A minimalist activity tracking dashboard for conscious digital well-being. Built
 -   **7-Day Heatmap** - GitHub-style activity contribution grid
 - **📦 App Inventory** - See which applications consume your time
 - **🔒 Privacy-First** - Incognito mode, auto data retention (30 days), local-only storage
-- **⚡ Background Mode** - Runs silently in system tray, auto-starts with Windows
+- **⚡ Background Mode** - Runs silently in system tray, auto-starts on login
 
 ## 🚀 Quick Start
 
@@ -17,13 +17,13 @@ A minimalist activity tracking dashboard for conscious digital well-being. Built
 
 - Node.js 18+ 
 - npm or yarn
-- Windows 10/11 (for packaged build)
+- Windows, macOS, or Linux (for packaged build)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/aether.git
+git clone https://github.com/aether-team/aether.git
 cd aether
 
 # Install dependencies

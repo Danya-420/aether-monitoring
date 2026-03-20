@@ -40,7 +40,7 @@ class ActivityMonitor extends EventEmitter {
         if (this.isPaused) return;
 
         const idleTime = powerMonitor.getSystemIdleTime();
-        const isUserActive = idleTime < 60; // 5 minutes
+        const isUserActive = idleTime < 60; // 60 seconds (1 minute)
 
         if (!isUserActive) {
             console.log('[Monitor] User idle, skipping activity log');
@@ -85,19 +85,8 @@ class ActivityMonitor extends EventEmitter {
                 this.emit('activity-update', activity);
                 console.log(`[Monitor] Activity detected: ${appName} - ${sanitizedTitle}`);
             } else {
-                // Same activity, just update duration in our local state if we want, 
-                // but the spec says "track active app/window every 5 seconds" and "Calculate session duration".
-                // Simple implementation: each tick is a record. 
-                // Or we could aggregate. The spec says "Auto-save every 5 minutes" but also "Data persists across app restarts".
-                // Let's stick to the 5s tick for now as per the user request.
-                const activity = {
-                    app: appName,
-                    title: sanitizedTitle,
-                    duration: this.interval / 1000,
-                    type: 'active'
-                };
-                activityStore.saveActivity(activity);
-                this.emit('activity-update', activity);
+                // Same activity, just emit update without saving duplicate record
+                this.emit('activity-update', this.currentActivity);
             }
         } catch (error) {
             console.error('Error in activity monitor tick:', error);

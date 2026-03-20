@@ -31,6 +31,6 @@
     "src",
     "vite.config.ts",
     "electron/preload.js",
-    "main.js"
+    "electron/main.js"
   ]
 }
