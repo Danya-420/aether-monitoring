@@ -20,7 +20,19 @@ contextBridge.exposeInMainWorld('aetherAPI', {
     getWpmStats: () => ipcRenderer.invoke('get-wpm-stats'),
 
     // Listeners
-    onDataUpdate: (callback) => ipcRenderer.on('data-update', (event, data) => callback(data)),
-    onWpmUpdate: (callback) => ipcRenderer.on('wpm-update', (event, data) => callback(data)),
-    onToggleIncognito: (callback) => ipcRenderer.on('toggle-incognito', () => callback())
+    onDataUpdate: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on('data-update', handler);
+        return () => ipcRenderer.removeListener('data-update', handler);
+    },
+    onWpmUpdate: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on('wpm-update', handler);
+        return () => ipcRenderer.removeListener('wpm-update', handler);
+    },
+    onToggleIncognito: (callback) => {
+        const handler = () => callback();
+        ipcRenderer.on('toggle-incognito', handler);
+        return () => ipcRenderer.removeListener('toggle-incognito', handler);
+    }
 });

@@ -30,7 +30,7 @@
   "include": [
     "src",
     "vite.config.ts",
-    "electron/preload.js",
-    "main.js"
+    "electron/preload.cjs",
+    "electron/main.js"
   ]
 }

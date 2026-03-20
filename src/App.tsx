@@ -98,9 +98,9 @@ declare global {
             getWpmStats: () => Promise<any>;
             getAutoLaunchStatus: () => Promise<boolean>;
             setAutoLaunch: (enabled: boolean) => Promise<boolean>;
-            onDataUpdate: (callback: (data: any) => void) => void;
-            onWpmUpdate: (callback: (data: any) => void) => void;
-            onToggleIncognito: (callback: () => void) => void;
+            onDataUpdate: (callback: (data: any) => void) => () => void;
+            onWpmUpdate: (callback: (data: any) => void) => () => void;
+            onToggleIncognito: (callback: () => void) => () => void;
             enterSleepMode: () => void;
         }
     }
@@ -184,28 +184,33 @@ export default function App() {
         refreshData();
 
         // Listen for real-time updates
-        window.aetherAPI.onDataUpdate((data) => {
+        const removeDataUpdate = window.aetherAPI.onDataUpdate((data) => {
             console.log('Real-time activity update:', data);
             // Refresh dashboard data when activity changes
             refreshData();
         });
 
         // Fetch initial WPM stats
-        window.aetherAPI.getWpmStats().then(setWpmStats);
+        window.aetherAPI.getWpmStats()
+            .then(setWpmStats)
+            .catch(err => console.error('Failed to get WPM stats:', err));
 
         // Fetch initial autoLaunch status
-        window.aetherAPI.getAutoLaunchStatus().then(setAutoLaunchEnabled);
+        window.aetherAPI.getAutoLaunchStatus()
+            .then(setAutoLaunchEnabled)
+            .catch(err => console.error('Failed to get auto launch status:', err));
 
         // Listen for WPM updates
-        window.aetherAPI.onWpmUpdate((stats) => {
+        const removeWpmUpdate = window.aetherAPI.onWpmUpdate((stats) => {
             console.log('Synchronized WPM update:', stats);
             setWpmStats(stats);
             setDashboardData(prev => prev ? { ...prev, wpmComparison: stats } : prev);
         });
 
         // Listen for Incognito toggle from main process (Tray)
+        let removeToggleIncognito: (() => void) | null = null;
         if (window.aetherAPI.onToggleIncognito) {
-            window.aetherAPI.onToggleIncognito(() => {
+            removeToggleIncognito = window.aetherAPI.onToggleIncognito(() => {
                 setIsIncognito(prev => {
                     const next = !prev;
                     window.aetherAPI.updateSettings({ isIncognito: next });
@@ -214,7 +219,12 @@ export default function App() {
             });
         }
 
-        return () => clearInterval(timer);
+        return () => {
+            clearInterval(timer);
+            if (removeDataUpdate) removeDataUpdate();
+            if (removeWpmUpdate) removeWpmUpdate();
+            if (removeToggleIncognito) removeToggleIncognito();
+        };
     }, []);
 
     const formattedTime = time.toLocaleTimeString('en-US', { hour12: false });

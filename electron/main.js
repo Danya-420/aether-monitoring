@@ -137,17 +137,18 @@ function createWindow() {
         frame: true,
         backgroundColor: '#F9F7F2',
         webPreferences: {
-            preload: join(__dirname, 'preload.js'),
+            preload: join(__dirname, 'preload.cjs'),
             contextIsolation: true,
             nodeIntegration: false,
+            sandbox: false, // Ensure preload has access to APIs
         },
     });
 
-    const url = isDev
-        ? 'http://localhost:5173'
-        : `file://${join(__dirname, '../dist/index.html')}`;
-
-    mainWindow.loadURL(url);
+    if (isDev) {
+        mainWindow.loadURL('http://localhost:5173');
+    } else {
+        mainWindow.loadFile(join(__dirname, '../dist/index.html'));
+    }
 
     if (isDev) {
         mainWindow.webContents.openDevTools();
@@ -189,8 +190,8 @@ ipcMain.handle('get-auto-launch-status', () => {
     
     console.log(`[Auto-Launch] Windows: ${loginSettings.openAtLogin}, Stored: ${storedPreference}`);
     
-    // Return stored preference (more reliable)
-    return storedPreference;
+    // Return actual system state
+    return loginSettings.openAtLogin;
 });
 
 ipcMain.handle('get-dashboard-data', async () => {

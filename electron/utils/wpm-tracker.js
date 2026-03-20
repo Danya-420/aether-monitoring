@@ -52,7 +52,12 @@ class WpmTracker extends EventEmitter {
 
     handleKeyDown() {
         const settings = activityStore.getSettings();
-        if (settings.isIncognito || this.isPaused) return;
+        if (settings.isIncognito) {
+            this.lastKeystrokeTime = null;
+            this.activeTypingStartTime = null;
+            return;
+        }
+        if (this.isPaused) return;
 
         const now = Date.now();
         this.totalKeystrokes++;

@@ -1,6 +1,6 @@
 import Store from 'electron-store';
 
-const store = new Store({ projectName: 'aether' });
+const store = new Store({ name: 'aether' });
 
 /**
  * Sanitizes window titles by removing emails, URLs, and file paths.
