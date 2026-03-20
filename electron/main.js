@@ -324,10 +324,7 @@ ipcMain.handle('get-wpm-stats', () => {
 // Handle WPM Save Triggers
 function setupWpmSaveTriggers() {
     // 1. Save on before-quit
-    app.on('before-quit', () => {
-        console.log('[App] Saving daily WPM summary before quit...');
-        wpmTracker.saveDailySummary();
-    });
+    // 1. Remove redundancy: Quit handler moved to bottom of file
 
     // 2. Daily check (check every hour if day changed)
     let lastSavedDay = new Date().toISOString().split('T')[0];
@@ -410,6 +407,8 @@ app.whenReady().then(() => {
 
 // Handle app quit
 app.on('before-quit', () => {
+    console.log('[App] Performing final saves before quit...');
+    wpmTracker.saveDailySummary();
     app.isQuiting = true;
 });
 

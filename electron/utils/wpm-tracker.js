@@ -12,6 +12,7 @@ class WpmTracker extends EventEmitter {
         this.updateInterval = null;
         this.idleThreshold = 5000; // 5 seconds idle gap
         this.isPaused = false;
+        this.needsSave = false;
 
         // Load today's data if it exists to persist session across restarts
         this.loadTodayStats();
@@ -59,6 +60,7 @@ class WpmTracker extends EventEmitter {
         }
         if (this.isPaused) return;
 
+        this.needsSave = true;
         const now = Date.now();
         this.totalKeystrokes++;
 
@@ -111,6 +113,11 @@ class WpmTracker extends EventEmitter {
     }
 
     saveDailySummary() {
+        if (!this.needsSave) {
+            console.log('[WPM] No new data since last save. Skipping summary write.');
+            return;
+        }
+
         const stats = this.getStats();
         const today = new Date().toISOString().split('T')[0];
         
@@ -139,6 +146,7 @@ class WpmTracker extends EventEmitter {
         const filteredHistory = history.filter(h => h.date >= cutoffStr);
         
         activityStore.saveWpmHistory(filteredHistory);
+        this.needsSave = false;
         console.log(`[WPM] Daily summary saved for ${today}: ${stats.wpm} WPM`);
     }
 
