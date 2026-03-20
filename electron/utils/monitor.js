@@ -40,12 +40,9 @@ class ActivityMonitor extends EventEmitter {
         if (this.isPaused) return;
 
         const idleTime = powerMonitor.getSystemIdleTime();
-        const isUserActive = idleTime < 60; // 5 minutes
+        const isUserActive = idleTime < 60;
 
-        if (!isUserActive) {
-            console.log('[Monitor] User idle, skipping activity log');
-            return;
-        }
+        if (!isUserActive) return;
 
         const settings = activityStore.getSettings();
         if (settings.isIncognito) {
@@ -62,28 +59,22 @@ class ActivityMonitor extends EventEmitter {
             const { owner, title, bounds } = result;
             const appName = owner.name;
             const sanitizedTitle = sanitize(title);
-
-            // Check if activity changed
             if (!this.currentActivity ||
                 this.currentActivity.app !== appName ||
                 this.currentActivity.title !== sanitizedTitle) {
-                console.log(`[Monitor] Activity detected: ${appName} - ${sanitizedTitle}`);
+                console.log(`[Monitor] Activity: ${appName} - ${sanitizedTitle}`);
             }
 
             const activity = {
                 app: appName,
                 title: sanitizedTitle,
-                duration: this.interval / 1000, // seconds
+                duration: this.interval / 1000,
                 type: 'active'
             };
 
-            // Save to store
             activityStore.saveActivity(activity);
 
-            // Update current
             this.currentActivity = activity;
-
-            // Emit event for real-time update
             this.emit('activity-update', activity);
         } catch (error) {
             console.error('Error in activity monitor tick:', error);

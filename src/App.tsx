@@ -119,8 +119,7 @@ const generateFlowPath = (data: number[]) => {
 
     let path = `M ${points[0][0]} ${points[0][1]}`;
 
-    // Create cubic bezier curves for smooth, rolling edges
-    // Using a 0.35 factor for control points to make peaks feel less "flat"
+    // Cubic bezier curves for smooth visual flow peaks
     for (let i = 0; i < points.length - 1; i++) {
         const curr = points[i];
         const next = points[i + 1];
@@ -241,18 +240,13 @@ export default function App() {
     const handleTabChange = (tab: string) => {
         if (tab === activeTab || isTransitioning) return;
         
-        // Start transition
         setIsTransitioning(true);
-        
-        // Step 1: Mark container as sweeping (triggers scanline + old content fade)
         setTransitionPhase('sweeping');
         
-        // Step 2: Wait for scanline to pass middle (200ms), then swap content
         setTimeout(() => {
             setActiveTab(tab);
             setTransitionPhase('showing');
             
-            // Step 3: Wait for new content fade-in (400ms), then reset
             setTimeout(() => {
                 setIsTransitioning(false);
                 setTransitionPhase('idle');

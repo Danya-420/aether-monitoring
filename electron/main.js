@@ -10,7 +10,6 @@ app.disableHardwareAcceleration();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Remove default menu bar
 Menu.setApplicationMenu(null);
 
 const isDev = !app.isPackaged;
@@ -20,28 +19,21 @@ let tray = null;
 app.isQuiting = false;
 let isIncognito = false;
 
-const isHiddenLaunch = process.argv.includes('--hidden');
-
-// Single Instance Lock
+// Instance & Lifecycle
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
     app.quit();
 } else {
     app.on('second-instance', (event, commandLine, workingDirectory) => {
-        // Someone tried to run a second instance, we should focus our window.
         if (mainWindow) {
             if (mainWindow.isMinimized()) mainWindow.restore();
             mainWindow.show();
             mainWindow.focus();
-            
-            // Resume monitoring if it was paused by Sleep Mode
-            const settings = activityStore.getSettings();
-            if (settings.isMonitoringEnabled !== false) {
-                monitor.resume();
-                wpmTracker.resume();
-                console.log('[Main] Second instance detected: Showing window and resuming monitoring.');
-            }
+
+            monitor.resume();
+            wpmTracker.resume();
+            console.log('[Main] Second instance: Resuming monitoring.');
         }
     });
 }
@@ -54,14 +46,10 @@ function updateTrayMenu() {
             click: () => {
                 mainWindow.show();
                 mainWindow.focus();
-                
-                // Resume monitoring if it was paused by Sleep Mode
-                const settings = activityStore.getSettings();
-                if (settings.isMonitoringEnabled !== false) {
-                    monitor.resume();
-                    wpmTracker.resume();
-                    console.log('[Tray Menu] Window shown: Resuming monitoring.');
-                }
+
+                monitor.resume();
+                wpmTracker.resume();
+                console.log('[Tray] Window shown: Resuming monitoring.');
             }
         },
         {
@@ -85,7 +73,7 @@ function updateTrayMenu() {
 }
 
 function createTray() {
-    const iconPath = app.isPackaged 
+    const iconPath = app.isPackaged
         ? join(process.resourcesPath, 'public', 'icons', 'icon.png')
         : join(__dirname, '../public/icons/icon.png');
 
@@ -113,14 +101,10 @@ function createTray() {
         } else if (mainWindow) {
             mainWindow.show();
             mainWindow.focus();
-            
-            // Resume monitoring when showing window (exiting Sleep Mode)
-            const settings = activityStore.getSettings();
-            if (settings.isMonitoringEnabled !== false) {
-                monitor.resume();
-                wpmTracker.resume();
-                console.log('[Tray] Window shown: Resuming monitoring.');
-            }
+
+            monitor.resume();
+            wpmTracker.resume();
+            console.log('[Tray] Window shown: Resuming monitoring.');
         }
     });
 
@@ -140,7 +124,7 @@ function createWindow() {
             preload: join(__dirname, 'preload.cjs'),
             contextIsolation: true,
             nodeIntegration: false,
-            sandbox: false, // Ensure preload has access to APIs
+            sandbox: false,
         },
     });
 
@@ -166,7 +150,7 @@ function createWindow() {
     mainWindow.on('closed', () => (mainWindow = null));
 }
 
-// IPC Handlers
+// API Handlers (IPC)
 ipcMain.handle('set-auto-launch', async (event, enabled) => {
     app.setLoginItemSettings({
         openAtLogin: enabled,
@@ -175,22 +159,19 @@ ipcMain.handle('set-auto-launch', async (event, enabled) => {
         path: app.getPath('exe'),
         args: ['--hidden']
     });
-    
-    // Persist to store
+
     activityStore.setAutoLaunchEnabled(enabled);
-    
+
     console.log(`[Auto-Launch] Applied: ${enabled}`);
     return true;
 });
 
 ipcMain.handle('get-auto-launch-status', () => {
-    // Check both Windows setting AND stored preference
     const loginSettings = app.getLoginItemSettings();
     const storedPreference = activityStore.getAutoLaunchEnabled();
-    
+
     console.log(`[Auto-Launch] Windows: ${loginSettings.openAtLogin}, Stored: ${storedPreference}`);
-    
-    // Return actual system state
+
     return loginSettings.openAtLogin;
 });
 
@@ -199,10 +180,8 @@ ipcMain.handle('get-dashboard-data', async () => {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
 
-    // Filter today's activities
     const todayActivities = activities.filter(a => a.timestamp.startsWith(today));
 
-    // Aggregate by app
     const appStats = {};
     todayActivities.forEach(a => {
         appStats[a.app] = (appStats[a.app] || 0) + a.duration;
@@ -212,7 +191,7 @@ ipcMain.handle('get-dashboard-data', async () => {
         .map(([name, duration]) => ({
             name: name.toUpperCase(),
             duration: duration,
-            percent: 0 // Will calculate based on max below
+            percent: 0
         }))
         .sort((a, b) => b.duration - a.duration)
         .slice(0, 5);
@@ -225,20 +204,17 @@ ipcMain.handle('get-dashboard-data', async () => {
         a.time = `${h}h ${m}m`;
     });
 
-    // Aggregate by hour (Flow Chart)
     const hourlyStats = Array(24).fill(0);
     todayActivities.forEach(a => {
         const hour = new Date(a.timestamp).getHours();
         hourlyStats[hour] += a.duration;
     });
 
-    // Convert seconds to minutes (max 60m)
     const hourlyFlow = hourlyStats.map(s => Math.min(Math.round(s / 60), 60));
 
     const wpmComparison = getWpmComparisonHelper();
 
-    // Verification log
-    console.log('WPM Comparison (Dashboard):', wpmComparison);
+    console.log('WPM Stats Refresh:', wpmComparison);
 
     return {
         topApps,
@@ -258,7 +234,6 @@ function getWpmComparisonHelper() {
     let trend = 0;
     if (weeklyAvg > 0) {
         trend = ((currentWpm - weeklyAvg) / weeklyAvg) * 100;
-        // Cap trend at ±99%
         trend = Math.max(-99, Math.min(99, Math.round(trend)));
     }
 
@@ -282,13 +257,12 @@ ipcMain.on('toggle-monitoring', (event, enabled) => {
 
 ipcMain.handle('update-settings', async (event, settings) => {
     activityStore.saveSettings(settings);
-    
-    // Sync Incognito status to tray menu if it was changed
+
     if (settings.isIncognito !== undefined) {
         isIncognito = settings.isIncognito;
         updateTrayMenu();
     }
-    
+
     return { success: true };
 });
 
@@ -302,14 +276,12 @@ ipcMain.handle('wipe-data', async () => {
     return { success: true };
 });
 
-// Forward activity updates to renderer
 monitor.on('activity-update', (data) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('data-update', data);
     }
 });
 
-// Forward WPM updates to renderer
 wpmTracker.on('wpm-update', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
         const fullStats = getWpmComparisonHelper();
@@ -323,10 +295,6 @@ ipcMain.handle('get-wpm-stats', () => {
 
 // Handle WPM Save Triggers
 function setupWpmSaveTriggers() {
-    // 1. Save on before-quit
-    // 1. Remove redundancy: Quit handler moved to bottom of file
-
-    // 2. Daily check (check every hour if day changed)
     let lastSavedDay = new Date().toISOString().split('T')[0];
     setInterval(() => {
         const today = new Date().toISOString().split('T')[0];
@@ -335,11 +303,10 @@ function setupWpmSaveTriggers() {
             wpmTracker.saveDailySummary();
             lastSavedDay = today;
         }
-    }, 60 * 60 * 1000); // Check every hour
+    }, 60 * 60 * 1000);
 }
 
 app.whenReady().then(() => {
-    // Check if launched as login item (Windows)
     const loginItemSettings = app.getLoginItemSettings();
     const wasOpenedAtLogin = loginItemSettings.wasOpenedAtLogin;
 
@@ -352,7 +319,6 @@ app.whenReady().then(() => {
     createWindow();
     createTray();
 
-    // Only show window if NOT launched at login AND not --hidden flag
     if (!wasOpenedAtLogin && !isHiddenLaunch) {
         mainWindow.maximize();
         mainWindow.show();
@@ -360,17 +326,15 @@ app.whenReady().then(() => {
         console.log('[Main] Starting hidden (auto-launch/hidden flag)');
     }
 
-    // Init Incognito & Monitoring state from store
     const currentSettings = activityStore.getSettings();
     if (currentSettings && currentSettings.isIncognito !== undefined) {
         isIncognito = currentSettings.isIncognito;
         updateTrayMenu();
     }
 
-    // Start/Resume monitoring based on stored preference
     monitor.start();
     wpmTracker.start();
-    
+
     if (currentSettings.isMonitoringEnabled === false) {
         monitor.pause();
         wpmTracker.pause();
@@ -379,59 +343,53 @@ app.whenReady().then(() => {
 
     setupWpmSaveTriggers();
 
-    // Auto-cleanup old records (30 days)
     activityStore.cleanupOldRecords(30);
 
-    // Handle Power Events
     powerMonitor.on('suspend', () => {
         console.log('System suspending, stopping monitor');
         monitor.stop();
-        wpmTracker.saveDailySummary(); // Save on suspend too
+        wpmTracker.saveDailySummary();
     });
 
     powerMonitor.on('resume', () => {
         console.log('System resumed, starting monitor');
         monitor.start();
     });
-
     ipcMain.on('enter-sleep-mode', () => {
         if (mainWindow) {
             mainWindow.hide();
             monitor.pause();
             wpmTracker.pause();
-            console.log('[App] Entering Sleep Mode: Window hidden, monitoring paused.');
+            console.log('[App] Sleep Mode: Monitoring paused.');
         }
     });
 
-});
+    app.on('before-quit', () => {
+        console.log('[App] Performing final saves before quit...');
+        wpmTracker.saveDailySummary();
+        app.isQuiting = true;
+    });
 
-// Handle app quit
-app.on('before-quit', () => {
-    console.log('[App] Performing final saves before quit...');
-    wpmTracker.saveDailySummary();
-    app.isQuiting = true;
-});
+    app.on('quit', () => {
+        if (tray) {
+            tray.destroy();
+            tray = null;
+        }
+    });
 
-app.on('quit', () => {
-    if (tray) {
-        tray.destroy();
-        tray = null;
-    }
-});
+    app.on('will-quit', () => {
+        wpmTracker.stop();
+    });
 
-app.on('will-quit', () => {
-    wpmTracker.stop();
-});
+    app.on('window-all-closed', () => {
+        if (process.platform !== 'darwin') {
+            app.quit();
+        }
+    });
 
-app.on('window-all-closed', () => {
-    // We already handle close to hide, but if it gets here (e.g. app.isQuiting=true)
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
-});
-
-app.on('activate', () => {
-    if (mainWindow === null) {
-        createWindow();
-    }
+    app.on('activate', () => {
+        if (mainWindow === null) {
+            createWindow();
+        }
+    });
 });
