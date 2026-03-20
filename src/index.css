@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+/* ============================================
+   SCANLINE SWEEP ANIMATION - V2 (Smooth)
+   ============================================ */
+
+@keyframes scanlineMove {
+  0% { 
+    left: -20%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% { 
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes contentFadeIn {
+  0% {
+    opacity: 0;
+    filter: blur(8px) brightness(0.8);
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0) brightness(1);
+    transform: scale(1);
+  }
+}
+
+@keyframes contentFadeOut {
+  0% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
+/* Scanline Container */
+.anim-scanline {
+  position: relative;
+  overflow: hidden;
+}
+
+/* The Scanline Beam */
+.anim-scanline::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -20%;
+  width: 15%; /* Wider beam for more visibility */
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(234, 88, 12, 0.08) 20%,
+    rgba(234, 88, 12, 0.25) 50%,
+    rgba(234, 88, 12, 0.08) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0;
+}
+
+/* Active State - Trigger Animation */
+.anim-scanline.sweeping::before {
+  animation: scanlineMove 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Old Content - Fade Out Immediately */
+.anim-scanline.sweeping > .tab-content-inner {
+  animation: contentFadeOut 0.15s ease-out forwards;
+  pointer-events: none;
+}
+
+/* New Content - Fade In After Scanline Passes */
+.anim-scanline.sweeping > .tab-content-inner.new {
+  animation: contentFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Optional: Subtle CRT Scanline Overlay (Always Visible) */
+.crt-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.02) 0px,
+    rgba(0, 0, 0, 0.02) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+  z-index: 99;
+  opacity: 0.6;
+}
