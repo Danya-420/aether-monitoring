@@ -45,6 +45,7 @@ export const activityStore = {
         return store.get('settings', {
             isIncognito: false,
             isMonitoringEnabled: true,
+            autoLaunch: false,
             blacklist: [],
             retentionDays: 30
         });

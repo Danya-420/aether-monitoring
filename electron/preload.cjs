@@ -24,8 +24,17 @@ contextBridge.exposeInMainWorld('aetherAPI', {
         return () => ipcRenderer.removeListener('wpm-update', handler);
     },
     onToggleIncognito: (callback) => {
-        const handler = () => callback();
+        const handler = (event, val) => callback(val);
         ipcRenderer.on('toggle-incognito', handler);
         return () => ipcRenderer.removeListener('toggle-incognito', handler);
-    }
+    },
+    onSystemResume: (callback) => {
+        const handler = () => callback();
+        ipcRenderer.on('system-resume', handler);
+        return () => ipcRenderer.removeListener('system-resume', handler);
+    },
+
+    enableLoopbackAudio: () => ipcRenderer.invoke('enable-loopback-audio'),
+    disableLoopbackAudio: () => ipcRenderer.invoke('disable-loopback-audio'),
+    sendAudioActivity: (isActive) => ipcRenderer.send('audio-activity-status', isActive)
 });

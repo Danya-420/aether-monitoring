@@ -10,6 +10,14 @@ class ActivityMonitor extends EventEmitter {
         this.timer = null;
         this.currentActivity = null;
         this.isPaused = false;
+        this.isAudioPlaying = false;
+    }
+
+    setAudioActive(isActive) {
+        if (this.isAudioPlaying !== isActive) {
+            console.log(`[Monitor] Audio state updated via IPC: ${isActive ? 'ACTIVE' : 'INACTIVE'}`);
+        }
+        this.isAudioPlaying = isActive;
     }
 
     start() {
@@ -40,9 +48,16 @@ class ActivityMonitor extends EventEmitter {
         if (this.isPaused) return;
 
         const idleTime = powerMonitor.getSystemIdleTime();
-        const isUserActive = idleTime < 60;
 
-        if (!isUserActive) return;
+        const isUserActive = idleTime < 60 || this.isAudioPlaying;
+
+        if (!isUserActive) {
+            if (this.currentActivity) {
+                console.log(`[Monitor] User is now true idle (No input for ${idleTime}s, No audio)`);
+                this.currentActivity = null;
+            }
+            return;
+        }
 
         const settings = activityStore.getSettings();
         if (settings.isIncognito) {
@@ -56,21 +71,29 @@ class ActivityMonitor extends EventEmitter {
             const result = await activeWin();
             if (!result) return;
 
-            const { owner, title, bounds } = result;
+            const { owner, title } = result;
             const appName = owner.name;
             const sanitizedTitle = sanitize(title);
-            if (!this.currentActivity ||
-                this.currentActivity.app !== appName ||
-                this.currentActivity.title !== sanitizedTitle) {
-                console.log(`[Monitor] Activity: ${appName} - ${sanitizedTitle}`);
-            }
 
             const activity = {
                 app: appName,
                 title: sanitizedTitle,
                 duration: this.interval / 1000,
-                type: 'active'
+                type: 'active',
+                tags: []
             };
+
+            if (idleTime >= 60 && this.isAudioPlaying) {
+                activity.type = 'passive';
+                activity.tags.push('passive');
+            }
+
+            if (!this.currentActivity ||
+                this.currentActivity.app !== appName ||
+                this.currentActivity.title !== sanitizedTitle) {
+                const tag = (activity.type === 'passive') ? '[Passive]' : '[Active]';
+                console.log(`[Monitor] ${tag} Activity: ${appName} - ${sanitizedTitle}`);
+            }
 
             activityStore.saveActivity(activity);
 

@@ -28,7 +28,9 @@
       {
         "from": "public",
         "to": "public",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
@@ -69,6 +71,7 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.1",
     "active-win": "^8.2.1",
+    "electron-audio-loopback": "^1.0.6",
     "electron-store": "^11.0.2",
     "lucide-react": "^0.577.0",
     "uiohook-napi": "^1.5.4"

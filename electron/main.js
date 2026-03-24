@@ -4,6 +4,9 @@ import { dirname, join } from 'path';
 import { activityStore } from './utils/store.js';
 import { monitor } from './utils/monitor.js';
 import { wpmTracker } from './utils/wpm-tracker.js';
+import { initMain } from 'electron-audio-loopback';
+
+initMain();
 
 app.disableHardwareAcceleration();
 
@@ -19,7 +22,6 @@ let tray = null;
 app.isQuiting = false;
 let isIncognito = false;
 
-// Instance & Lifecycle
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
@@ -55,8 +57,11 @@ function updateTrayMenu() {
         {
             label: isIncognito ? 'Disable Incognito' : 'Enable Incognito',
             click: () => {
+                isIncognito = !isIncognito;
+                activityStore.saveSettings({ isIncognito });
+                updateTrayMenu();
                 if (mainWindow) {
-                    mainWindow.webContents.send('toggle-incognito');
+                    mainWindow.webContents.send('toggle-incognito', isIncognito);
                 }
             }
         },
@@ -125,6 +130,7 @@ function createWindow() {
             contextIsolation: true,
             nodeIntegration: false,
             sandbox: false,
+            backgroundThrottling: false,
         },
     });
 
@@ -171,8 +177,7 @@ ipcMain.handle('get-auto-launch-status', () => {
     const storedPreference = activityStore.getAutoLaunchEnabled();
 
     console.log(`[Auto-Launch] Windows: ${loginSettings.openAtLogin}, Stored: ${storedPreference}`);
-
-    return loginSettings.openAtLogin;
+    return storedPreference;
 });
 
 ipcMain.handle('get-dashboard-data', async () => {
@@ -276,6 +281,10 @@ ipcMain.handle('wipe-data', async () => {
     return { success: true };
 });
 
+ipcMain.on('audio-activity-status', (event, isActive) => {
+    monitor.setAudioActive(isActive);
+});
+
 monitor.on('activity-update', (data) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('data-update', data);
@@ -309,6 +318,7 @@ function setupWpmSaveTriggers() {
 app.whenReady().then(() => {
     const loginItemSettings = app.getLoginItemSettings();
     const wasOpenedAtLogin = loginItemSettings.wasOpenedAtLogin;
+    const isHiddenLaunch = process.argv.includes('--hidden');
 
     console.log('=== LAUNCH DEBUG ===');
     console.log('wasOpenedAtLogin:', wasOpenedAtLogin);
@@ -354,6 +364,9 @@ app.whenReady().then(() => {
     powerMonitor.on('resume', () => {
         console.log('System resumed, starting monitor');
         monitor.start();
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('system-resume');
+        }
     });
     ipcMain.on('enter-sleep-mode', () => {
         if (mainWindow) {
