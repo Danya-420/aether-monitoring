@@ -63,12 +63,18 @@ export const activityStore = {
     getWeeklyHeatmap: () => {
         const activities = store.get('activities', []);
         const heatmapSeconds = Array(7).fill(null).map(() => Array(24).fill(0));
-        const now = Date.now();
-        const weekAgo = now - (7 * 24 * 60 * 60 * 1000);
+        const now = new Date();
+        const day = now.getDay();
+        const daysSinceMonday = (day + 6) % 7;
+
+        const startOfWeek = new Date(now);
+        startOfWeek.setHours(0, 0, 0, 0);
+        startOfWeek.setDate(now.getDate() - daysSinceMonday);
+        const startOfWeekTime = startOfWeek.getTime();
 
         activities.forEach(record => {
             const timestamp = new Date(record.timestamp).getTime();
-            if (timestamp < weekAgo) return;
+            if (timestamp < startOfWeekTime) return;
 
             const date = new Date(timestamp);
             const day = date.getDay();

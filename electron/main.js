@@ -183,9 +183,13 @@ ipcMain.handle('get-auto-launch-status', () => {
 ipcMain.handle('get-dashboard-data', async () => {
     const activities = activityStore.getActivities();
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
 
-    const todayActivities = activities.filter(a => a.timestamp.startsWith(today));
+    const todayActivities = activities.filter(a => {
+        const activityDate = new Date(a.timestamp);
+        return activityDate.getFullYear() === now.getFullYear() &&
+            activityDate.getMonth() === now.getMonth() &&
+            activityDate.getDate() === now.getDate();
+    });
 
     const appStats = {};
     todayActivities.forEach(a => {
