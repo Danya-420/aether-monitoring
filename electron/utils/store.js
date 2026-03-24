@@ -121,10 +121,19 @@ export const activityStore = {
 
         const recentWeek = history.filter(h => h.date >= weekAgoStr);
 
-        if (recentWeek.length === 0) return 0;
+        let totalKeystrokes = 0;
+        let totalMinutes = 0;
 
-        const total = recentWeek.reduce((sum, h) => sum + h.avgWpm, 0);
-        return Math.round(total / recentWeek.length);
+        recentWeek.forEach(h => {
+            totalKeystrokes += (h.totalKeystrokes || 0);
+            totalMinutes += (h.activeMinutes || 0);
+        });
+
+        if (totalMinutes === 0) return 0;
+
+        // Weighted Average = (Sum of Keystrokes / 5) / Sum of Minutes
+        const weightedWpm = (totalKeystrokes / 5) / totalMinutes;
+        return Math.round(weightedWpm);
     },
 
     setAutoLaunchEnabled: (enabled) => {

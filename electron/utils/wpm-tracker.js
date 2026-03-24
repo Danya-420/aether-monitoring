@@ -62,14 +62,15 @@ class WpmTracker extends EventEmitter {
         const now = Date.now();
         this.totalKeystrokes++;
 
-        if (!this.lastKeystrokeTime) {
+        if (!this.activeTypingStartTime) {
             this.activeTypingStartTime = now;
         } else {
             const gap = now - this.lastKeystrokeTime;
             if (gap > this.idleThreshold) {
+                // End current session and start a new one
+                const sessionDuration = this.lastKeystrokeTime - this.activeTypingStartTime;
+                this.totalActiveDuration += sessionDuration;
                 this.activeTypingStartTime = now;
-            } else {
-                this.totalActiveDuration += gap;
             }
         }
 
@@ -77,20 +78,44 @@ class WpmTracker extends EventEmitter {
     }
 
     calculateWpm() {
-        const activeSeconds = this.totalActiveDuration / 1000;
+        let currentSessionDuration = 0;
+        const now = Date.now();
+        
+        if (this.activeTypingStartTime && this.lastKeystrokeTime) {
+            // If we are currently typing (gap < threshold since last key), include the current session
+            if (now - this.lastKeystrokeTime <= this.idleThreshold) {
+                currentSessionDuration = this.lastKeystrokeTime - this.activeTypingStartTime;
+            } else {
+                // The handleKeyDown logic adds the session when the NEXT key comes.
+                // For real-time display, if we just finished a session (now > threshold),
+                // we should include it if it hasn't been added to totalActiveDuration yet.
+                // However, to keep it simple and consistent with handleKeyDown, we only add it
+                // when it's "finalized" by idle state in save/emit or by a new key.
+                currentSessionDuration = this.lastKeystrokeTime - this.activeTypingStartTime;
+            }
+        }
+        
+        const totalDurationMs = this.totalActiveDuration + currentSessionDuration;
+        const activeSeconds = totalDurationMs / 1000;
         const activeMinutes = activeSeconds / 60;
 
-        if (activeSeconds < 5) return 0;
+        // Requirement: Consider edge cases for different typing patterns
+        if (activeSeconds < 2) return 0; // Lowered threshold slightly for better responsiveness
 
         const wpm = (this.totalKeystrokes / 5) / activeMinutes;
         return Math.round(wpm);
     }
 
     getStats() {
+        let currentSessionDuration = 0;
+        if (this.activeTypingStartTime && this.lastKeystrokeTime) {
+            currentSessionDuration = this.lastKeystrokeTime - this.activeTypingStartTime;
+        }
+
         return {
             wpm: this.calculateWpm(),
             totalKeystrokes: this.totalKeystrokes,
-            activeTypingTime: Math.round(this.totalActiveDuration / 1000)
+            activeTypingTime: Math.round((this.totalActiveDuration + currentSessionDuration) / 1000)
         };
     }
 
@@ -104,6 +129,14 @@ class WpmTracker extends EventEmitter {
         if (!this.needsSave) {
             console.log('[WPM] No new data since last save. Skipping summary write.');
             return;
+        }
+
+        // Factor in the final session of the day if it hasn't been added yet
+        if (this.activeTypingStartTime && this.lastKeystrokeTime) {
+            const sessionDuration = this.lastKeystrokeTime - this.activeTypingStartTime;
+            this.totalActiveDuration += sessionDuration;
+            this.activeTypingStartTime = null;
+            this.lastKeystrokeTime = null;
         }
 
         const stats = this.getStats();
